@@ -25,7 +25,7 @@ class AgentState(TypedDict):
 class TravelPlannerAgent:
     def __init__(self):
         self.llm = ChatGroq(
-            model="llama-3.1-8b-instant",   # you can also try "llama-3.1-8b-instant"
+            model="llama-3.1-8b-instant",  
             temperature=0,
             api_key=os.getenv("GROQ_API_KEY")
         )
@@ -266,70 +266,95 @@ Only respond with valid JSON, no other text."""
         return state
     
     def create_plan(self, state: AgentState) -> AgentState:
-        # Calculate number of days
-        start = datetime.strptime(state["start_date"], "%Y-%m-%d")
-        end = datetime.strptime(state["end_date"], "%Y-%m-%d")
+        """Safely create a travel plan even if dates are missing or invalid."""
+
+        # --- Safe date parsing ---
+        def safe_parse(date_str, default_offset=0):
+            if not date_str or not isinstance(date_str, str):
+                return datetime.now() + timedelta(days=default_offset)
+            try:
+                return datetime.strptime(date_str, "%Y-%m-%d")
+            except Exception:
+                return datetime.now() + timedelta(days=default_offset)
+
+        start = safe_parse(state.get("start_date"), default_offset=1)
+        end = safe_parse(state.get("end_date"), default_offset=3)
+
+        # Ensure end > start
+        if end <= start:
+            end = start + timedelta(days=2)
+
         num_days = (end - start).days + 1
-        
-        # Create day-by-day plan
+
+        # --- Build daily plan ---
         daily_plan = []
         attractions = state.get("attractions", [])
         weather = state.get("weather", [])
-        
+
         for i in range(num_days):
             day_date = start + timedelta(days=i)
             day_weather = weather[i] if i < len(weather) else {}
-            
-            # Distribute attractions across days
-            day_attractions = attractions[i*2:(i+1)*2] if attractions else []
-            
+
             day_plan = {
                 "day": i + 1,
                 "date": day_date.strftime("%Y-%m-%d"),
                 "weather": day_weather,
                 "activities": []
             }
-            
+
+            # First day: arrival
             if i == 0:
                 day_plan["activities"].append({
                     "time": "Morning",
-                    "activity": f"Arrival in {state['destination']}",
+                    "activity": f"Arrival in {state.get('destination', '')}",
                     "description": "Check into hotel and rest"
                 })
-            
+
+            # Add attractions
+            if attractions:
+                start_idx = (i * 2) % len(attractions)
+                day_attractions = [
+                    attractions[start_idx],
+                    attractions[(start_idx + 1) % len(attractions)]
+                ] if len(attractions) > 1 else [attractions[0]]
+            else:
+                day_attractions = []
+
             for j, attraction in enumerate(day_attractions):
                 time_slot = "Afternoon" if j == 0 else "Evening"
                 day_plan["activities"].append({
                     "time": time_slot,
-                    "activity": f"Visit {attraction['name']}",
+                    "activity": f"Visit {attraction.get('name', 'Attraction')}",
                     "description": attraction.get('description', '')
                 })
-            
+
+            # Last day: departure
             if i == num_days - 1:
                 day_plan["activities"].append({
                     "time": "Evening",
                     "activity": "Departure",
-                    "description": f"Return flight to {state['origin']}"
+                    "description": f"Return flight to {state.get('origin', '')}"
                 })
-            
+
             daily_plan.append(day_plan)
-        
-        # Create summary
+
+        # --- Create summary ---
         summary = self._generate_summary(state, daily_plan)
-        
+
         plan = {
-            "origin": state["origin"],
-            "destination": state["destination"],
-            "start_date": state["start_date"],
-            "end_date": state["end_date"],
+            "origin": state.get("origin", ""),
+            "destination": state.get("destination", ""),
+            "start_date": start.strftime("%Y-%m-%d"),
+            "end_date": end.strftime("%Y-%m-%d"),
             "duration_days": num_days,
             "flights": state.get("flights", []),
             "daily_plan": daily_plan,
             "summary": summary
         }
-        
+
         state["plan"] = plan
         return state
+
     
     def _generate_summary(self, state, daily_plan):
         """Generate natural language summary"""

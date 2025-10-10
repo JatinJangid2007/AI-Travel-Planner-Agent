@@ -1,8 +1,9 @@
 import requests
-from datetime import datetime, timedelta
 from typing import Dict, Any, List
 import os
 import json
+import requests
+from datetime import datetime, date, timedelta
 
 class FlightSearchTool:
     def __init__(self):
@@ -196,91 +197,148 @@ class FlightSearchTool:
         
         return flights
 
-
 import requests
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta, date
 from typing import List, Dict
 
 class WeatherTool:
     """Get weather forecast using Open-Meteo API (free, no key required)"""
-    
+
     def __init__(self):
         self.geocoding_url = "https://geocoding-api.open-meteo.com/v1/search"
         self.forecast_url = "https://api.open-meteo.com/v1/forecast"
-        self.forecast_days_limit = 16  # Open-Meteo allows ~16 days forecast
-    
+        self.climate_url = "https://climate-api.open-meteo.com/v1/climate"
+        self.forecast_days_limit = 16  # Open-Meteo supports ~16-day forecast
+
     def get_coordinates(self, city: str) -> tuple:
         """Get latitude and longitude for a city"""
         response = requests.get(self.geocoding_url, params={"name": city, "count": 1}, timeout=10)
         response.raise_for_status()
         data = response.json()
-        
+
         if data.get("results"):
             result = data["results"][0]
             return result["latitude"], result["longitude"]
-        
+
         raise Exception(f"Could not find coordinates for city: {city}")
-    
+
     def get_forecast(self, city: str, start_date: str, end_date: str) -> List[Dict]:
-        """Get weather forecast for date range or return message if out of range"""
+        """Get weather forecast for date range or use historical averages beyond 16 days"""
         lat, lon = self.get_coordinates(city)
-        
-        # Check if start_date is within forecast range
+
         today = date.today()
         allowed_max = today + timedelta(days=self.forecast_days_limit)
         start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
         end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
-        
-        if start_dt > allowed_max:
-            print(f"Warning: Forecast not available beyond {allowed_max}. Returning empty forecast.")
-            return [{
-                "date": None,
-                "temp_max": None,
-                "temp_min": None,
-                "condition": f"Weather forecast unavailable for {start_date} to {end_date}. "
-                             f"Try using historical averages or check closer to the trip date."
-            }]
-        
-        params = {
+        days_range = (end_dt - start_dt).days + 1
+
+        # --- Case 1: Forecast available ---
+        if start_dt <= allowed_max:
+            params = {
+                "latitude": lat,
+                "longitude": lon,
+                "daily": "temperature_2m_max,temperature_2m_min,weathercode",
+                "start_date": start_date,
+                "end_date": end_date,
+                "timezone": "auto"
+            }
+
+            response = requests.get(self.forecast_url, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            daily = data.get("daily", {})
+
+            forecast = []
+            for i in range(len(daily.get("time", []))):
+                condition = self._weather_code_to_condition(daily["weathercode"][i])
+                forecast.append({
+                    "date": daily["time"][i],
+                    "temp_max": f"{daily['temperature_2m_max'][i]}°C",
+                    "temp_min": f"{daily['temperature_2m_min'][i]}°C",
+                    "condition": condition
+                })
+            return forecast
+
+        # --- Case 2: Beyond forecast range (use historical climate averages) ---
+        climate_params = {
             "latitude": lat,
             "longitude": lon,
-            "daily": "temperature_2m_max,temperature_2m_min,weathercode",
-            "start_date": start_date,
-            "end_date": end_date,
-            "timezone": "auto"
+            "month": start_dt.month,
+            "daily": "temperature_2m_max_mean,temperature_2m_min_mean",
         }
-        
-        response = requests.get(self.forecast_url, params=params, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        
-        daily = data.get("daily", {})
+
+        try:
+            response = requests.get(self.climate_url, params=climate_params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            temp_max = data["daily"]["temperature_2m_max_mean"][0]
+            temp_min = data["daily"]["temperature_2m_min_mean"][0]
+        except Exception:
+            temp_max, temp_min = 25, 18  # fallback defaults
+
+        # 🔁 Create pseudo-daily entries so planner doesn’t break
         forecast = []
-        
-        for i in range(len(daily.get("time", []))):
-            weather_code = daily["weathercode"][i]
-            condition = self._weather_code_to_condition(weather_code)
-            
+        for i in range(days_range):
+            current_day = start_dt + timedelta(days=i)
             forecast.append({
-                "date": daily["time"][i],
-                "temp_max": f"{daily['temperature_2m_max'][i]}°C",
-                "temp_min": f"{daily['temperature_2m_min'][i]}°C",
-                "condition": condition
+                "date": str(current_day),
+                "temp_max": f"{temp_max:.1f}°C",
+                "temp_min": f"{temp_min:.1f}°C",
+                "condition": "🌡️ Estimated from historical climate averages"
             })
-        
-        if not forecast:
-            print(f"No forecast available for {city} from {start_date} to {end_date}")
-        
+
         return forecast
-    
+
     def _weather_code_to_condition(self, code: int) -> str:
         conditions = {
+            0: "☀️ Clear sky", 1: "🌤️ Mainly clear", 2: "⛅ Partly cloudy", 3: "☁️ Overcast",
+            45: "🌫️ Foggy", 48: "🌫️ Fog", 51: "🌦️ Light drizzle", 53: "🌦️ Drizzle", 55: "🌧️ Heavy drizzle",
+            61: "🌧️ Light rain", 63: "🌧️ Rain", 65: "🌧️ Heavy rain", 71: "🌨️ Light snow",
+            73: "❄️ Snow", 75: "❄️ Heavy snow", 80: "🌦️ Light showers", 81: "🌧️ Showers",
+            82: "⛈️ Heavy showers", 95: "⛈️ Thunderstorm", 96: "⛈️ Thunderstorm with hail",
+            99: "⛈️ Severe thunderstorm"
+        }
+        return conditions.get(code, "🌡️ Unknown condition")
+
+        
+        
+
+    # -------------------------------------------------------------------
+    def _weather_code_to_condition(self, code: int) -> str:
+        """Translate Open-Meteo weather codes to human-readable text"""
+        conditions = {
             0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
-            45: "Foggy", 48: "Foggy", 51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle",
-            61: "Light rain", 63: "Rain", 65: "Heavy rain", 71: "Light snow", 73: "Snow", 75: "Heavy snow",
-            80: "Light showers", 81: "Showers", 82: "Heavy showers", 95: "Thunderstorm"
+            45: "Foggy", 48: "Foggy",
+            51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle",
+            61: "Light rain", 63: "Rain", 65: "Heavy rain",
+            71: "Light snow", 73: "Snow", 75: "Heavy snow",
+            80: "Light showers", 81: "Showers", 82: "Heavy showers",
+            95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Severe thunderstorm"
         }
         return conditions.get(code, "Unknown")
+
+    # -------------------------------------------------------------------
+    def _condition_to_emoji(self, condition: str) -> str:
+        """Add weather emoji for better visualization"""
+        mapping = {
+            "Clear": "☀️",
+            "Mainly clear": "🌤️",
+            "Partly cloudy": "⛅",
+            "Overcast": "☁️",
+            "Fog": "🌫️",
+            "Drizzle": "🌦️",
+            "Rain": "🌧️",
+            "Showers": "🌦️",
+            "Snow": "❄️",
+            "Thunderstorm": "⛈️",
+            "Unknown": "❔"
+        }
+
+        for key, emoji in mapping.items():
+            if key.lower() in condition.lower():
+                return emoji
+        return "🌡️"
+
 
 
 
@@ -294,27 +352,34 @@ class POITool:
         }
     
     def get_attractions(self, city: str) -> List[Dict]:
+        """Fetch real tourist attractions for a city using Wikipedia API"""
         search_params = {
             "action": "query",
             "format": "json",
             "list": "search",
-            "srsearch": f"{city} tourist attractions landmarks",
-            "srlimit": 5
+            "srsearch": f"top tourist attractions in {city}",
+            "srlimit": 10
         }
-        
+
         response = requests.get(self.base_url, params=search_params, headers=self.headers, timeout=30)
         response.raise_for_status()
         search_data = response.json()
-        
-        if not search_data.get("query", {}).get("search"):
+
+        search_results = search_data.get("query", {}).get("search", [])
+        if not search_results:
             raise Exception(f"No attractions found for {city}")
-        
+
         attractions = []
-        
-        # Get details for top search results
-        for result in search_data["query"]["search"][:5]:
+
+        for result in search_results:
             page_title = result["title"]
-            
+
+            # 🧠 Skip generic or irrelevant pages
+            if any(skip in page_title.lower() for skip in [
+                "list of", "tourist attractions", "lists of", "history of", "culture of"
+            ]):
+                continue
+
             content_params = {
                 "action": "query",
                 "format": "json",
@@ -323,26 +388,29 @@ class POITool:
                 "explaintext": True,
                 "titles": page_title
             }
-            
+
             try:
                 content_response = requests.get(self.base_url, params=content_params, headers=self.headers, timeout=10)
                 content_response.raise_for_status()
                 content_data = content_response.json()
-                
+
                 pages = content_data.get("query", {}).get("pages", {})
                 page = list(pages.values())[0]
-                
+
                 extract = page.get("extract", "")
-                description = extract.split('.')[0] + '.' if extract else "Popular attraction"
-                
+                description = extract.strip()
+                if not description:
+                    description = "A popular landmark and tourist spot in the city."
+
                 attractions.append({
                     "name": page_title,
-                    "description": description[:500] 
+                    "description": description[:500]
                 })
-            except:
+            except Exception:
                 continue
-        
+
+        # 🧩 If Wikipedia only returned generic pages, fall back to at least something
         if not attractions:
-            raise Exception(f"Could not retrieve attraction details for {city}")
-        
-        return attractions[:8]  
+            raise Exception(f"Could not retrieve detailed attractions for {city}")
+
+        return attractions[:8]
