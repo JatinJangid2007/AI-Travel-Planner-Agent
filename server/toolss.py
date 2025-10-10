@@ -198,20 +198,21 @@ class FlightSearchTool:
         return flights
 
 import requests
-from datetime import datetime, timedelta, date
+from datetime import datetime, date, timedelta
 from typing import List, Dict
 
 class WeatherTool:
-    """Get weather forecast using Open-Meteo API (free, no key required)"""
+    """Get weather forecast or climate averages using Open-Meteo API (free, no key required)"""
 
     def __init__(self):
         self.geocoding_url = "https://geocoding-api.open-meteo.com/v1/search"
         self.forecast_url = "https://api.open-meteo.com/v1/forecast"
         self.climate_url = "https://climate-api.open-meteo.com/v1/climate"
-        self.forecast_days_limit = 16  # Open-Meteo supports ~16-day forecast
+        self.forecast_days_limit = 16  # Open-Meteo supports up to ~16 days forecast
 
+    # -------------------------------------------------------------------
     def get_coordinates(self, city: str) -> tuple:
-        """Get latitude and longitude for a city"""
+        """Get latitude and longitude for a given city"""
         response = requests.get(self.geocoding_url, params={"name": city, "count": 1}, timeout=10)
         response.raise_for_status()
         data = response.json()
@@ -222,86 +223,118 @@ class WeatherTool:
 
         raise Exception(f"Could not find coordinates for city: {city}")
 
+    # -------------------------------------------------------------------
     def get_forecast(self, city: str, start_date: str, end_date: str) -> List[Dict]:
-        """Get weather forecast for date range or use historical averages beyond 16 days"""
+        """Get weather forecast if within range, else fallback to historical averages"""
         lat, lon = self.get_coordinates(city)
 
+        # Parse and validate dates
         today = date.today()
         allowed_max = today + timedelta(days=self.forecast_days_limit)
         start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
         end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
-        days_range = (end_dt - start_dt).days + 1
-
-        # --- Case 1: Forecast available ---
+        num_days = (end_dt - start_dt).days + 1
+        # 🌤️ If within forecast window → use live forecast
         if start_dt <= allowed_max:
-            params = {
-                "latitude": lat,
-                "longitude": lon,
-                "daily": "temperature_2m_max,temperature_2m_min,weathercode",
-                "start_date": start_date,
-                "end_date": end_date,
-                "timezone": "auto"
-            }
+            forecast = self._fetch_forecast(lat, lon, start_date, end_date)
+            if forecast:
+                return forecast
+            # If forecast empty → fallback to climate averages
 
+        # 📈 Otherwise → fallback to historical climate averages
+        climate = self._fetch_climate_averages(lat, lon, start_dt, end_dt)
+        if climate:
+            daily_forecast = []
+            for i in range(num_days):
+                day_date = start_dt + timedelta(days=i)
+                daily_forecast.append({
+                    "date": day_date.strftime("%Y-%m-%d"),
+                    "temp_max": climate["temp_max"],
+                    "temp_min": climate["temp_min"],
+                    "condition": climate["condition"]
+                })
+            return daily_forecast
+
+        # 🧩 Final fallback if all APIs fail
+        return [{
+            "date": None,
+            "temp_max": None,
+            "temp_min": None,
+            "condition": f"Weather forecast unavailable for {start_date} to {end_date}. "
+                         f"Try using historical averages or check closer to the trip date."
+        }]
+
+    # -------------------------------------------------------------------
+    def _fetch_forecast(self, lat: float, lon: float, start_date: str, end_date: str) -> List[Dict]:
+        """Fetch live forecast data from Open-Meteo"""
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "daily": "temperature_2m_max,temperature_2m_min,weathercode",
+            "start_date": start_date,
+            "end_date": end_date,
+            "timezone": "auto"
+        }
+
+        try:
             response = requests.get(self.forecast_url, params=params, timeout=30)
             response.raise_for_status()
             data = response.json()
+
             daily = data.get("daily", {})
+            if not daily or "time" not in daily:
+                return []
 
             forecast = []
-            for i in range(len(daily.get("time", []))):
-                condition = self._weather_code_to_condition(daily["weathercode"][i])
+            for i in range(len(daily["time"])):
+                weather_code = daily["weathercode"][i]
+                condition = self._weather_code_to_condition(weather_code)
+                emoji = self._condition_to_emoji(condition)
+
                 forecast.append({
                     "date": daily["time"][i],
                     "temp_max": f"{daily['temperature_2m_max'][i]}°C",
                     "temp_min": f"{daily['temperature_2m_min'][i]}°C",
-                    "condition": condition
+                    "condition": f"{emoji} {condition}"
                 })
             return forecast
+        except Exception as e:
+            print(f"Forecast fetch failed: {e}")
+            return []
 
-        # --- Case 2: Beyond forecast range (use historical climate averages) ---
-        climate_params = {
+    # -------------------------------------------------------------------
+    def _fetch_climate_averages(self, lat: float, lon: float, start_dt: date, end_dt: date) -> Dict:
+        """Fetch monthly climate averages when forecast not available"""
+        params = {
             "latitude": lat,
             "longitude": lon,
-            "month": start_dt.month,
-            "daily": "temperature_2m_max_mean,temperature_2m_min_mean",
+            "start_month": start_dt.strftime("%m"),
+            "end_month": end_dt.strftime("%m"),
+            "daily": "temperature_2m_max,temperature_2m_min",
+            "timezone": "auto"
         }
 
         try:
-            response = requests.get(self.climate_url, params=climate_params, timeout=30)
+            response = requests.get(self.climate_url, params=params, timeout=20)
             response.raise_for_status()
             data = response.json()
-            temp_max = data["daily"]["temperature_2m_max_mean"][0]
-            temp_min = data["daily"]["temperature_2m_min_mean"][0]
-        except Exception:
-            temp_max, temp_min = 25, 18  # fallback defaults
 
-        # 🔁 Create pseudo-daily entries so planner doesn’t break
-        forecast = []
-        for i in range(days_range):
-            current_day = start_dt + timedelta(days=i)
-            forecast.append({
-                "date": str(current_day),
-                "temp_max": f"{temp_max:.1f}°C",
-                "temp_min": f"{temp_min:.1f}°C",
+            daily = data.get("daily", {})
+            if not daily:
+                return None
+
+            avg_max = sum(daily["temperature_2m_max"]) / len(daily["temperature_2m_max"])
+            avg_min = sum(daily["temperature_2m_min"]) / len(daily["temperature_2m_min"])
+
+            return {
+                "date": None,
+                "temp_max": f"{round(avg_max, 1)}°C",
+                "temp_min": f"{round(avg_min, 1)}°C",
                 "condition": "🌡️ Estimated from historical climate averages"
-            })
-
-        return forecast
-
-    def _weather_code_to_condition(self, code: int) -> str:
-        conditions = {
-            0: "☀️ Clear sky", 1: "🌤️ Mainly clear", 2: "⛅ Partly cloudy", 3: "☁️ Overcast",
-            45: "🌫️ Foggy", 48: "🌫️ Fog", 51: "🌦️ Light drizzle", 53: "🌦️ Drizzle", 55: "🌧️ Heavy drizzle",
-            61: "🌧️ Light rain", 63: "🌧️ Rain", 65: "🌧️ Heavy rain", 71: "🌨️ Light snow",
-            73: "❄️ Snow", 75: "❄️ Heavy snow", 80: "🌦️ Light showers", 81: "🌧️ Showers",
-            82: "⛈️ Heavy showers", 95: "⛈️ Thunderstorm", 96: "⛈️ Thunderstorm with hail",
-            99: "⛈️ Severe thunderstorm"
-        }
-        return conditions.get(code, "🌡️ Unknown condition")
-
-        
-        
+            }
+        except Exception as e:
+            print(f"Climate data fetch failed: {e}")
+            return None
 
     # -------------------------------------------------------------------
     def _weather_code_to_condition(self, code: int) -> str:
@@ -338,7 +371,6 @@ class WeatherTool:
             if key.lower() in condition.lower():
                 return emoji
         return "🌡️"
-
 
 
 
